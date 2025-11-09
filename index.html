@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Live Camera • Fixed Name Gallery</title>
+<style>
+  :root{
+    --bg:#0f1220; --panel:#141a33; --card:#0f142c; --line:rgba(255,255,255,.08);
+    --text:#e8ecff; --muted:#9aa4bf; --accent:#5b8cff; --ok:#39d98a; --err:#ff6b6b;
+    --radius:18px;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family:Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    color:var(--text);
+    background: radial-gradient(1200px 900px at 10% 0%, #1a2142 0%, #0b0e1a 55%, #070911 100%);
+  }
+  .page{max-width:1200px; margin:24px auto; padding:0 14px;}
+  h1{margin:0 0 14px; font-size:clamp(18px,2.2vw,26px); letter-spacing:.2px}
+  .grid{display:grid; grid-template-columns: 1.25fr .9fr; gap:16px}
+  @media (max-width:980px){ .grid{grid-template-columns:1fr} }
+
+  .card{
+    background:linear-gradient(180deg,#121733,#0e1531);
+    border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;
+    box-shadow:0 20px 50px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.04);
+  }
+  .card-h{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:10px; padding:10px 12px; border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,0));
+  }
+  .title{font-size:13px; text-transform:uppercase; letter-spacing:.35px; color:var(--muted)}
+  .hint{font-size:12px; color:var(--muted)}
+  .cam{ position:relative; background:#000; aspect-ratio:16/9; }
+  video{width:100%; height:100%; object-fit:cover; display:block; background:#000}
+  .badge{
+    position:absolute; top:10px; left:10px; padding:6px 10px; font-size:12px; font-weight:700;
+    border-radius:999px; color:#cfe0ff;
+    background:rgba(91,140,255,.16); border:1px solid rgba(91,140,255,.35); backdrop-filter: blur(6px);
+  }
+  .fallback{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:var(--muted)}
+  .pad{padding:12px}
+
+  .row{display:flex; flex-wrap:wrap; gap:10px; align-items:center}
+  .btn{
+    appearance:none; border:0; border-radius:12px; padding:10px 14px; font-weight:700; font-size:14px;
+    background:linear-gradient(180deg,#3a64ff,#2b4fe6); color:#fff; cursor:pointer;
+    box-shadow:0 10px 26px rgba(58,100,255,.35);
+  }
+  .btn.sec{background:linear-gradient(180deg,#2a314f,#222944); box-shadow:none}
+  .btn:disabled{opacity:.6; cursor:not-allowed}
+
+  .side{ display:flex; flex-direction:column; gap:12px; padding:12px; }
+  .slot{ background:var(--card); border:1px solid var(--line); border-radius:14px; overflow:hidden; }
+  .slot-h{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; border-bottom:1px solid var(--line)}
+  .slot-name{font-weight:800; text-transform:capitalize; letter-spacing:.2px}
+  .slot-media{position:relative; background:#0a0d1b; aspect-ratio:1/1}
+  .slot-media img{width:100%; height:100%; display:block; object-fit:cover}
+  .slot-f{display:flex; gap:8px; padding:10px; border-top:1px solid var(--line); align-items:center; flex-wrap:wrap}
+  .meta{font-size:12px; color:var(--muted); margin-left:auto}
+
+  .list{
+    margin-top:10px; background:var(--panel); border:1px solid var(--line);
+    border-radius:14px; overflow:hidden;
+  }
+  .list .rowi{display:flex; gap:10px; padding:8px 12px; align-items:center; border-top:1px solid var(--line)}
+  .list .rowi:first-child{border-top:0}
+  .dot{width:10px; height:10px; border-radius:50%}
+  .ok{background:var(--ok)} .no{background:#5a617a}
+  .msg{position:fixed; right:14px; bottom:14px; max-width:360px; padding:12px 14px; border-radius:12px; font-size:14px; box-shadow:0 10px 30px rgba(0,0,0,.4)}
+  .msg.err{background:rgba(255,107,107,.12); border:1px solid rgba(255,107,107,.5); color:#ffdede}
+  .msg.ok{background:rgba(57,217,138,.12); border:1px solid rgba(57,217,138,.5); color:#e7fff2}
+</style>
+</head>
+<body>
+  <div class="page">
+    <h1>Live Camera • Fixed Name Gallery</h1>
+    <div class="grid">
+      <!-- LEFT: Camera -->
+      <section class="card">
+        <div class="card-h">
+          <div class="title">Camera Preview</div>
+          <div class="hint">Allow permission • Use Capture to take a frame</div>
+        </div>
+        <div class="cam">
+          <video id="camera" autoplay playsinline muted></video>
+          <div class="badge">LIVE</div>
+          <div class="fallback" id="camFallback" hidden>Camera not available. Please allow permission.</div>
+        </div>
+        <div class="pad">
+          <div class="row">
+            <button id="btnCapture" class="btn" type="button">Capture Frame</button>
+            <button id="btnMirror" class="btn sec" type="button">Toggle Mirror</button>
+            <span class="hint" id="shotHint">No shot yet.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT: Fixed name sidebar -->
+      <aside class="card">
+        <div class="card-h">
+          <div class="title">Right Sidebar • 5 Fixed Names</div>
+          <div class="hint">Priyanka • Rugvedi • Suhani • Tanushree • Gayatri</div>
+        </div>
+        <div class="side" id="slots">
+          <!-- Slots injected by JS -->
+        </div>
+        <div class="pad">
+          <div class="title" style="margin-bottom:6px;">Shot Status</div>
+          <div class="list" id="statusList">
+            <!-- Status rows injected -->
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div id="toast" class="msg" style="display:none"></div>
+
+<script>
+/* ---------- Config (UPDATED NAMES) ---------- */
+const FIXED_NAMES = ["Priyanka", "Rugvedi", "Suhani", "Tanushree", "Gayatri"]; // exact list
+const PLACEHOLDER =
+  "data:image/svg+xml;charset=UTF-8," +
+  encodeURIComponent(`<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 800'>
+  <defs><linearGradient id='g' x1='0' y1='0' x2='0' y2='1'>
+    <stop offset='0' stop-color='#0e1531'/><stop offset='1' stop-color='#0b1126'/></linearGradient></defs>
+  <rect width='100%' height='100%' fill='url(#g)'/>
+  <g fill='#5b8cff' opacity='0.4'><circle cx='400' cy='320' r='120'/></g>
+  <g opacity='0.8'><rect x='200' y='540' width='400' height='40' rx='8' fill='#1e293b'/></g>
+  <text x='400' y='570' font-size='28' text-anchor='middle' fill='#9aa4bf' font-family='sans-serif'>No image yet</text>
+</svg>`);
+
+/* ---------- DOM refs ---------- */
+const video = document.getElementById("camera");
+const camFallback = document.getElementById("camFallback");
+const btnCapture = document.getElementById("btnCapture");
+const btnMirror = document.getElementById("btnMirror");
+const shotHint = document.getElementById("shotHint");
+const slotsWrap = document.getElementById("slots");
+const statusList = document.getElementById("statusList");
+const toast = document.getElementById("toast");
+
+/* ---------- State ---------- */
+let streamRef = null;
+let mirrored = false;
+let lastShotDataUrl = null; // pure frame (no name)
+const imagesByName = new Map(); // name -> dataURL (with name stamped)
+
+/* ---------- Camera ---------- */
+async function startCamera(){
+  try{
+    streamRef = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
+    video.srcObject = streamRef;
+    camFallback.hidden = true;
+    applyMirror();
+  }catch(e){
+    camFallback.hidden = false;
+    console.warn("Camera error:", e);
+    showMsg("Camera unavailable. Check permissions.", "err");
+  }
+}
+function applyMirror(){
+  video.style.transform = mirrored ? "scaleX(-1)" : "none";
+}
+btnMirror.addEventListener("click", () => { mirrored = !mirrored; applyMirror(); });
+
+/* Capture a raw frame as DataURL (no name yet) */
+btnCapture.addEventListener("click", () => {
+  if(!streamRef){ showMsg("Camera not ready.", "err"); return; }
+  const w = video.videoWidth || 1280, h = video.videoHeight || 720;
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  const ctx = c.getContext("2d");
+  if(mirrored){
+    ctx.translate(w,0); ctx.scale(-1,1);
+  }
+  ctx.drawImage(video, 0, 0, w, h);
+  lastShotDataUrl = c.toDataURL("image/png");
+  shotHint.textContent = "Last shot ready. Use “Use Live Shot” on any name.";
+  showMsg("Captured! Now click “Use Live Shot” in a name card.", "ok");
+});
+
+/* ---------- UI Build: Slots ---------- */
+function renderSlots(){
+  slotsWrap.innerHTML = "";
+  for(const name of FIXED_NAMES){
+    const idSafe = `slot-${name.replace(/\s+/g,'_')}`;
+    const slot = document.createElement("div");
+    slot.className = "slot";
+    slot.innerHTML = `
+      <div class="slot-h">
+        <div class="slot-name">${name}</div>
+        <div class="hint">Only this name allowed</div>
+      </div>
+      <div class="slot-media"><img id="${idSafe}-img" alt="${name}" src="${PLACEHOLDER}"></div>
+      <div class="slot-f">
+        <label class="btn sec" for="${idSafe}-file">Upload “${name}”</label>
+        <input id="${idSafe}-file" type="file" accept="image/*" hidden>
+        <button class="btn" id="${idSafe}-use" type="button">Use Live Shot</button>
+        <span class="meta" id="${idSafe}-meta">waiting…</span>
+      </div>
+    `;
+    slotsWrap.appendChild(slot);
+
+    const fileInput = slot.querySelector(`#${idSafe}-file`);
+    const imgEl = slot.querySelector(`#${idSafe}-img`);
+    const metaEl = slot.querySelector(`#${idSafe}-meta`);
+    const useBtn = slot.querySelector(`#${idSafe}-use`);
+
+    // Upload handler with filename validation (must equal the slot name)
+    fileInput.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if(!file) return;
+      const base = (file.name || "").split(".").slice(0,-1).join(".").trim();
+      // Require exact match (case-insensitive) with the slot's name
+      if(base.toLowerCase() !== name.toLowerCase()){
+        showMsg(`File name must be exactly “${name}”. You selected “${file.name}”.`, "err");
+        e.target.value = ""; // reset
+        return;
+      }
+      const imgURL = URL.createObjectURL(file);
+      try{
+        const stamped = await paintWithName(imgURL, name);
+        imgEl.src = stamped;
+        imagesByName.set(name, stamped);
+        metaEl.textContent = `set by upload (${file.name})`;
+        refreshStatus();
+        showMsg(`Image set for “${name}” ✅`, "ok");
+      }catch(err){
+        console.error(err);
+        showMsg("Could not read the image file.", "err");
+      }
+    });
+
+    // Use live shot for this name (stamps the name on image)
+    useBtn.addEventListener("click", async () => {
+      if(!lastShotDataUrl){ showMsg("No captured frame yet. Click ‘Capture Frame’ first.", "err"); return; }
+      const stamped = await paintWithName(lastShotDataUrl, name);
+      imgEl.src = stamped;
+      imagesByName.set(name, stamped);
+      metaEl.textContent = "set by live shot";
+      refreshStatus();
+      showMsg(`Live shot applied to “${name}” ✅`, "ok");
+    });
+  }
+}
+
+/* ---------- Draw helper: stamp name on image ---------- */
+function paintWithName(src, name){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const w = img.naturalWidth || 1024, h = img.naturalHeight || 1024;
+      const c = document.createElement("canvas");
+      c.width = w; c.height = h;
+      const ctx = c.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+
+      // Bottom banner
+      const barH = Math.max( Math.round(h * 0.11), 60 );
+      ctx.fillStyle = "rgba(10,14,30,0.75)";
+      ctx.fillRect(0, h - barH, w, barH);
+      // border line
+      ctx.fillStyle = "rgba(91,140,255,0.65)";
+      ctx.fillRect(0, h - barH, w, 2);
+
+      // Text
+      const pad = Math.round(barH * 0.3);
+      const fontSize = Math.round(barH * 0.45);
+      ctx.font = `700 ${fontSize}px Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial`;
+      ctx.fillStyle = "#e8ecff";
+      ctx.textBaseline = "middle";
+      ctx.shadowColor = "rgba(0,0,0,.6)";
+      ctx.shadowBlur = 6;
+      ctx.shadowOffsetY = 2;
+
+      // Label and measuring
+      const label = name;
+      const maxWidth = w - pad*2;
+      let text = label;
+      while(ctx.measureText(text).width > maxWidth && text.length > 1){
+        text = text.slice(0, -1);
+      }
+      ctx.fillText(text, pad, h - barH/2);
+
+      resolve(c.toDataURL("image/png"));
+    };
+    img.onerror = reject;
+    img.src = src;
+  });
+}
+
+/* ---------- Status list ---------- */
+function refreshStatus(){
+  statusList.innerHTML = "";
+  for(const name of FIXED_NAMES){
+    const row = document.createElement("div");
+    row.className = "rowi";
+    const has = imagesByName.has(name);
+    row.innerHTML = `
+      <div class="dot ${has ? 'ok':'no'}"></div>
+      <div style="min-width:80px; text-transform:capitalize; font-weight:700">${name}</div>
+      <div class="hint">${has ? 'Image set' : 'Not set'}</div>
+    `;
+    statusList.appendChild(row);
+  }
+}
+
+/* ---------- Toast ---------- */
+let toastTimer = null;
+function showMsg(text, kind="ok"){
+  toast.textContent = text;
+  toast.className = `msg ${kind}`;
+  toast.style.display = "block";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> toast.style.display="none", 3500);
+}
+
+/* ---------- Boot ---------- */
+renderSlots();
+refreshStatus();
+if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){ startCamera(); }
+else{ camFallback.hidden = false; showMsg("Camera not supported on this device.", "err"); }
+</script>
+</body>
+</html>
